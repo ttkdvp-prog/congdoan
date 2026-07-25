@@ -37,7 +37,7 @@
       <div class="nav-item" data-page="hoso">
         <span class="nav-icon">📋</span>
         <span>Hồ sơ chăm lo</span>
-        <span class="nav-badge">48</span>
+        <span class="nav-badge" id="badgeHoSo">48</span>
       </div>
       <div class="nav-item" data-page="quyche">
         <span class="nav-icon">⚙️</span>
@@ -493,6 +493,100 @@
     </div>
     <div class="modal-footer" id="modalFooter">
       <button class="btn btn-sm btn-secondary" onclick="closeModal()">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ EDIT MODAL ═══════ -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal-content" style="max-width: 650px;">
+    <div class="modal-header">
+      <span class="modal-title">✏️ Chỉnh sửa hồ sơ</span>
+      <button class="modal-close" onclick="closeEditModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="formEditHoSo" onsubmit="handleEditSubmit(event)">
+        <input type="hidden" id="editMa">
+        
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Mã hồ sơ</label>
+            <input class="form-input" type="text" id="editMaDisplay" disabled style="opacity:0.75">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Loại chăm lo</label>
+            <select class="form-select" id="editLoai">
+              <option value="Ốm đau/đi viện">Ốm đau/đi viện</option>
+              <option value="Hiếu/viếng">Hiếu/viếng</option>
+              <option value="Hỷ/Sinh con">Hỷ/Sinh con</option>
+              <option value="Tai nạn/rủi ro">Tai nạn/rủi ro</option>
+              <option value="Sinh nhật">Sinh nhật</option>
+              <option value="Quà đoàn viên nghỉ việc">Quà đoàn viên nghỉ việc</option>
+              <option value="Khác">Khác</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group full-width" style="margin-top:16px">
+          <label class="form-label">Nội dung sự việc <span class="required">*</span></label>
+          <textarea class="form-textarea" id="editNoiDung" required rows="3"></textarea>
+        </div>
+
+        <div class="form-grid" style="margin-top:16px">
+          <div class="form-group">
+            <label class="form-label">Số tiền (đồng)</label>
+            <input class="form-input" type="text" id="editSoTien" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Địa bàn</label>
+            <select class="form-select" id="editDiaBan">
+              <option value="Phú Thọ">Phú Thọ</option>
+              <option value="Vĩnh phúc">Vĩnh Phúc</option>
+              <option value="Hòa Bình">Hòa Bình</option>
+              <option value="Hà Nội">Hà Nội</option>
+              <option value="Khác">Khác</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-top:16px">
+          <div class="form-group">
+            <label class="form-label">Người được hỗ trợ / Đoàn viên</label>
+            <input class="form-input" type="text" id="editDoanVien" placeholder="Họ và tên đoàn viên">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Người đề nghị / Người thực hiện</label>
+            <input class="form-input" type="text" id="editNguoiDeNghi" placeholder="Họ và tên người đề nghị">
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-top:16px">
+          <div class="form-group">
+            <label class="form-label">Trạng thái</label>
+            <select class="form-select" id="editTrangThai">
+              <option value="Đã hoàn thành">Đã hoàn thành</option>
+              <option value="Đang xử lý">Đang xử lý</option>
+              <option value="Chờ duyệt">Chờ duyệt</option>
+              <option value="Từ chối">Từ chối</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cảnh báo / Tiến độ</label>
+            <select class="form-select" id="editCanhBao">
+              <option value="Đúng hạn">Đúng hạn</option>
+              <option value="Đang xử lý">Đang xử lý</option>
+              <option value="Chưa duyệt">Chưa duyệt</option>
+              <option value="Trễ hạn">Trễ hạn</option>
+              <option value="Từ chối">Từ chối</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border-subtle)">
+          <button type="button" class="btn btn-sm btn-secondary" onclick="closeEditModal()">Hủy</button>
+          <button type="submit" class="btn btn-sm btn-primary">💾 Lưu thay đổi</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>

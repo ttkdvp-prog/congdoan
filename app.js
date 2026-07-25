@@ -65,14 +65,37 @@ const QUY_CHE = [
   {ma:"KHAC",ten:"Khác",tuKhoa:["khác"],muc:0,hoSo:"Hồ sơ theo nội dung phát sinh",thoiHan:"05 ngày",ghiChu:"BCH xem xét riêng",icon:"📁",color:"type-khac",gradient:"linear-gradient(135deg,#64748b,#94a3b8)"}
 ];
 
-// ── SUBMITTED CASES (localStorage) ──
+// ── SUBMITTED CASES & EDITS (localStorage) ──
 function getSubmittedCases() {
   try {
     return JSON.parse(localStorage.getItem('congdoan_submitted') || '[]');
   } catch { return []; }
 }
+
 function saveSubmittedCases(cases) {
   localStorage.setItem('congdoan_submitted', JSON.stringify(cases));
+}
+
+function getCustomEdits() {
+  try {
+    return JSON.parse(localStorage.getItem('congdoan_custom_edits') || '{}');
+  } catch { return {}; }
+}
+
+function saveCustomEdit(ma, editData) {
+  const edits = getCustomEdits();
+  edits[ma] = { ...(edits[ma] || {}), ...editData };
+  localStorage.setItem('congdoan_custom_edits', JSON.stringify(edits));
+}
+
+function getAllRecords() {
+  const submitted = getSubmittedCases();
+  const edits = getCustomEdits();
+
+  const baseRecords = DL_CHAM_LO.map(r => edits[r.ma] ? { ...r, ...edits[r.ma] } : r);
+  const submittedRecords = submitted.map(r => edits[r.ma] ? { ...r, ...edits[r.ma] } : r);
+
+  return [...baseRecords, ...submittedRecords];
 }
 
 // ── HELPERS ──
@@ -238,8 +261,8 @@ function destroyCharts() {
 function buildCharts() {
   destroyCharts();
 
-  // Compute data from DL_CHAM_LO
-  const allData = [...DL_CHAM_LO, ...getSubmittedCases().filter(c => c.trangThai === 'Đã hoàn thành')];
+  // Compute data from all completed records
+  const allData = getAllRecords().filter(c => c.trangThai === 'Đã hoàn thành');
 
   // Chart 1: Loai cham lo (Donut)
   const loaiMap = {};
@@ -476,7 +499,7 @@ function buildCharts() {
 // ── DASHBOARD: Recent table ──
 function renderRecentTable() {
   const tbody = document.getElementById('recentTableBody');
-  const recent = [...DL_CHAM_LO].reverse().slice(0, 8);
+  const recent = getAllRecords().reverse().slice(0, 8);
   tbody.innerHTML = recent.map(r => `
     <tr onclick="showDetail('${r.ma}')">
       <td>${r.ma}</td>
@@ -491,7 +514,7 @@ function renderRecentTable() {
 
 function renderDashboard() {
   // Update KPIs with real data
-  const allData = [...DL_CHAM_LO, ...getSubmittedCases().filter(c => c.trangThai === 'Đã hoàn thành')];
+  const allData = getAllRecords().filter(c => c.trangThai === 'Đã hoàn thành');
   const totalLuot = allData.length;
   const totalTien = allData.reduce((s, r) => s + (r.soTien || 0), 0);
   const diaBans = new Set(allData.map(r => r.diaBan).filter(Boolean));
@@ -507,9 +530,8 @@ function renderDashboard() {
   buildCharts();
   renderRecentTable();
 
-  // Update badge
-  const pending = getSubmittedCases().filter(c => c.trangThai === 'Chờ duyệt').length;
-  document.getElementById('badgePending').textContent = pending;
+  // Update badges
+  updateBadges();
 }
 
 // ── HO SO TABLE ──
@@ -523,7 +545,7 @@ function getFilteredHoSo() {
   const filterThang = document.getElementById('filterThang')?.value || '';
   const filterTrangThai = document.getElementById('filterTrangThai')?.value || '';
 
-  const all = [...DL_CHAM_LO, ...getSubmittedCases()];
+  const all = getAllRecords();
 
   return all.filter(r => {
     if (search) {
@@ -600,9 +622,21 @@ function goPage(p) {
   renderHoSoTable();
 }
 
-// ── DETAIL MODAL ──
+// ── DETAIL & EDIT MODALS ──
+function updateBadges() {
+  const allRecords = getAllRecords();
+  const pending = allRecords.filter(c => c.trangThai === 'Chờ duyệt').length;
+  const totalHoSo = allRecords.length;
+
+  const pendingEl = document.getElementById('badgePending');
+  if (pendingEl) pendingEl.textContent = pending;
+
+  const hoSoEl = document.getElementById('badgeHoSo');
+  if (hoSoEl) hoSoEl.textContent = totalHoSo;
+}
+
 function showDetail(ma) {
-  const all = [...DL_CHAM_LO, ...getSubmittedCases()];
+  const all = getAllRecords();
   const record = all.find(r => r.ma === ma);
   if (!record) return;
 
@@ -629,17 +663,16 @@ function showDetail(ma) {
     `<div class="detail-row"><span class="detail-label">${label}</span><span class="detail-value">${value}</span></div>`
   ).join('');
 
-  // Show approve/reject buttons for pending cases
+  // Show action buttons
   const footer = document.getElementById('modalFooter');
+  let buttons = '';
   if (record.trangThai === 'Chờ duyệt') {
-    footer.innerHTML = `
-      <button class="btn btn-sm btn-success" onclick="approveCase('${record.ma}')">✅ Duyệt</button>
-      <button class="btn btn-sm btn-secondary" onclick="rejectCase('${record.ma}')" style="background:rgba(239,68,68,0.1);color:#dc2626;border-color:rgba(239,68,68,0.2)">❌ Từ chối</button>
-      <button class="btn btn-sm btn-secondary" onclick="closeModal()">Đóng</button>
-    `;
-  } else {
-    footer.innerHTML = `<button class="btn btn-sm btn-secondary" onclick="closeModal()">Đóng</button>`;
+    buttons += `<button class="btn btn-sm btn-success" onclick="approveCase('${record.ma}')">✅ Duyệt</button>`;
+    buttons += `<button class="btn btn-sm btn-secondary" onclick="rejectCase('${record.ma}')" style="background:rgba(239,68,68,0.1);color:#dc2626;border-color:rgba(239,68,68,0.2)">❌ Từ chối</button>`;
   }
+  buttons += `<button class="btn btn-sm btn-primary" onclick="openEditModal('${record.ma}')">✏️ Sửa hồ sơ</button>`;
+  buttons += `<button class="btn btn-sm btn-secondary" onclick="closeModal()">Đóng</button>`;
+  footer.innerHTML = buttons;
 
   document.getElementById('detailModal').classList.add('active');
 }
@@ -647,43 +680,128 @@ function showDetail(ma) {
 function approveCase(ma) {
   const cases = getSubmittedCases();
   const idx = cases.findIndex(c => c.ma === ma);
-  if (idx === -1) return;
+  if (idx !== -1) {
+    cases[idx].trangThai = 'Đã hoàn thành';
+    cases[idx].canhBao = 'Đúng hạn';
+    cases[idx].ngayHT = Date.now();
+    saveSubmittedCases(cases);
+  }
 
-  cases[idx].trangThai = 'Đã hoàn thành';
-  cases[idx].canhBao = 'Đúng hạn';
-  cases[idx].ngayHT = Date.now();
-  saveSubmittedCases(cases);
+  saveCustomEdit(ma, { trangThai: 'Đã hoàn thành', canhBao: 'Đúng hạn' });
 
   closeModal();
   showToast(`Đã duyệt hồ sơ ${ma} thành công!`, 'success');
 
   // Refresh views
+  updateBadges();
   renderSubmitted();
-  updatePendingBadge();
-  if (currentPage === 'hoso') renderHoSo();
-  if (currentPage === 'dashboard') { buildCharts(); renderRecentTable(); animateCounters(); }
+  if (currentPage === 'hoso') renderHoSoTable();
+  if (currentPage === 'dashboard') renderDashboard();
 }
 
 function rejectCase(ma) {
   const cases = getSubmittedCases();
   const idx = cases.findIndex(c => c.ma === ma);
-  if (idx === -1) return;
+  if (idx !== -1) {
+    cases[idx].trangThai = 'Từ chối';
+    cases[idx].canhBao = 'Từ chối';
+    saveSubmittedCases(cases);
+  }
 
-  cases[idx].trangThai = 'Từ chối';
-  cases[idx].canhBao = 'Từ chối';
-  saveSubmittedCases(cases);
+  saveCustomEdit(ma, { trangThai: 'Từ chối', canhBao: 'Từ chối' });
 
   closeModal();
   showToast(`Đã từ chối hồ sơ ${ma}`, 'warning');
 
+  updateBadges();
   renderSubmitted();
-  updatePendingBadge();
-  if (currentPage === 'hoso') renderHoSo();
+  if (currentPage === 'hoso') renderHoSoTable();
+  if (currentPage === 'dashboard') renderDashboard();
 }
 
-function updatePendingBadge() {
-  const pending = getSubmittedCases().filter(c => c.trangThai === 'Chờ duyệt').length;
-  document.getElementById('badgePending').textContent = pending;
+function openEditModal(ma) {
+  closeModal();
+  const all = getAllRecords();
+  const record = all.find(r => r.ma === ma);
+  if (!record) return;
+
+  document.getElementById('editMa').value = record.ma;
+  document.getElementById('editMaDisplay').value = record.ma;
+  document.getElementById('editLoai').value = record.loai || 'Khác';
+  document.getElementById('editNoiDung').value = record.noiDung || '';
+  document.getElementById('editSoTien').value = record.soTien ? new Intl.NumberFormat('vi-VN').format(record.soTien) : '0';
+  document.getElementById('editDiaBan').value = record.diaBan || 'Khác';
+  document.getElementById('editDoanVien').value = record.doanVien || record.nguoiHoTro || '';
+  document.getElementById('editNguoiDeNghi').value = record.nguoiThucHien || record.nguoiDeNghi || '';
+  document.getElementById('editTrangThai').value = record.trangThai || 'Đã hoàn thành';
+  document.getElementById('editCanhBao').value = record.canhBao || 'Đúng hạn';
+
+  document.getElementById('editModal').classList.add('active');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('active');
+}
+
+function handleEditSubmit(e) {
+  e.preventDefault();
+
+  const ma = document.getElementById('editMa').value;
+  const loai = document.getElementById('editLoai').value;
+  const noiDung = document.getElementById('editNoiDung').value;
+  const mucStr = document.getElementById('editSoTien').value;
+  const diaBan = document.getElementById('editDiaBan').value;
+  const doanVien = document.getElementById('editDoanVien').value;
+  const nguoiDeNghi = document.getElementById('editNguoiDeNghi').value;
+  const trangThai = document.getElementById('editTrangThai').value;
+  const canhBao = document.getElementById('editCanhBao').value;
+
+  const soTien = parseInt(mucStr.replace(/\D/g, '')) || 0;
+
+  // Update in submitted cases if present
+  const submitted = getSubmittedCases();
+  const subIdx = submitted.findIndex(c => c.ma === ma);
+  if (subIdx !== -1) {
+    submitted[subIdx] = {
+      ...submitted[subIdx],
+      loai,
+      noiDung,
+      lyDo: noiDung,
+      soTien,
+      diaBan: diaBan !== 'Khác' ? diaBan : null,
+      doanVien: doanVien || null,
+      nguoiHoTro: doanVien || null,
+      nguoiDeNghi: nguoiDeNghi || null,
+      nguoiThucHien: nguoiDeNghi || null,
+      trangThai,
+      canhBao
+    };
+    saveSubmittedCases(submitted);
+  }
+
+  // Always save custom edit override so it persists for any base or submitted case
+  saveCustomEdit(ma, {
+    loai,
+    noiDung,
+    lyDo: noiDung,
+    soTien,
+    diaBan: diaBan !== 'Khác' ? diaBan : null,
+    doanVien: doanVien || null,
+    nguoiHoTro: doanVien || null,
+    nguoiDeNghi: nguoiDeNghi || null,
+    nguoiThucHien: nguoiDeNghi || null,
+    trangThai,
+    canhBao
+  });
+
+  closeEditModal();
+  showToast(`Đã cập nhật hồ sơ ${ma} thành công!`, 'success');
+
+  // Refresh all views
+  updateBadges();
+  renderSubmitted();
+  if (currentPage === 'hoso') renderHoSoTable();
+  if (currentPage === 'dashboard') renderDashboard();
 }
 
 function closeModal() {
@@ -870,9 +988,8 @@ function handleFormSubmit(e) {
   resetForm();
   renderSubmitted();
 
-  // Update badge
-  const pending = cases.filter(c => c.trangThai === 'Chờ duyệt').length;
-  document.getElementById('badgePending').textContent = pending;
+  // Update badges
+  updateBadges();
 }
 
 function renderSubmitted() {
@@ -916,10 +1033,22 @@ function setupEventListeners() {
   document.getElementById('detailModal').addEventListener('click', (e) => {
     if (e.target === document.getElementById('detailModal')) closeModal();
   });
+  document.getElementById('editModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('editModal')) closeEditModal();
+  });
+
+  // Auto-format currency on edit amount
+  document.getElementById('editSoTien').addEventListener('input', (e) => {
+    const val = e.target.value.replace(/\D/g, '');
+    e.target.value = val ? new Intl.NumberFormat('vi-VN').format(val) : '';
+  });
 
   // Escape key
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') {
+      closeModal();
+      closeEditModal();
+    }
   });
 
   // Form
@@ -969,9 +1098,8 @@ function init() {
   renderQuyche();
   renderSubmitted();
 
-  // Update badge
-  const pending = getSubmittedCases().filter(c => c.trangThai === 'Chờ duyệt').length;
-  document.getElementById('badgePending').textContent = pending;
+  // Update badges
+  updateBadges();
 }
 
 // Start
