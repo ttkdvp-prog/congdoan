@@ -66,7 +66,8 @@ const QUY_CHE = [
 ];
 
 // ── GOOGLE APPS SCRIPT SYNC CONFIG ──
-let APPS_SCRIPT_URL = localStorage.getItem('congdoan_apps_script_url') || '';
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbza3hoerCq0IYSIdAtWgFkuzc6wKrAsEmtSqJuHkLoFin6qAWiKXa3Z1Y3owG8p-69D/exec';
+let APPS_SCRIPT_URL = localStorage.getItem('congdoan_apps_script_url') || DEFAULT_APPS_SCRIPT_URL;
 let remoteSheetData = null;
 
 function getRemoteData() {
@@ -190,24 +191,40 @@ function getAllRecords() {
 
   let baseList = DL_CHAM_LO;
   if (remote && remote.DL_CHAM_LO && remote.DL_CHAM_LO.length > 0) {
-    baseList = remote.DL_CHAM_LO.map(r => ({
-      ma: r['Mã hồ sơ'] || r['Mã'] || r.ma || 'LS-00',
-      ngayStr: r['Ngày'] || r.ngayStr,
-      thang: parseInt(r['Tháng']) || r.thang || 1,
-      nam: parseInt(r['Năm']) || r.nam || 2026,
-      noiDung: r['Nội dung'] || r['Nội dung vụ việc'] || r.noiDung || '',
-      loai: r['Loại chăm lo'] || r['Loại'] || r.loai || 'Khác',
-      soTien: parseInt(r['Kinh phí'] || r['Mức đề nghị'] || r['Số tiền'] || r.soTien) || 0,
-      nguoiHoTro: r['Người được hỗ trợ'] || r.nguoiHoTro || null,
-      doanVien: r['Đoàn viên'] || r.doanVien || null,
-      quanHe: r['Quan hệ'] || r.quanHe || null,
-      lyDo: r['Lý do'] || r.lyDo || null,
-      nguoiThucHien: r['Người thực hiện'] || r.nguoiThucHien || null,
-      diaBan: r['Địa bàn'] || r.diaBan || null,
-      donVi: r['Đơn vị'] || r.donVi || null,
-      trangThai: r['Trạng thái'] || r.trangThai || 'Đã hoàn thành',
-      canhBao: r['Cảnh báo'] || r.canhBao || 'Đúng hạn'
-    }));
+    baseList = remote.DL_CHAM_LO.map(r => {
+      // Find keys case-insensitively
+      const findVal = (...keys) => {
+        for (const k of keys) {
+          if (r[k] !== undefined && r[k] !== null && r[k] !== '') return r[k];
+          // Try fuzzy match
+          for (const rKey in r) {
+            if (rKey.toLowerCase().replace(/[^a-z0-9]/g, '').includes(k.toLowerCase().replace(/[^a-z0-9]/g, ''))) {
+              if (r[rKey] !== undefined && r[rKey] !== null && r[rKey] !== '') return r[rKey];
+            }
+          }
+        }
+        return null;
+      };
+
+      return {
+        ma: findVal('Mã hồ sơ', 'Mã', 'Ma ho so', 'ma') || 'LS-00',
+        ngayStr: findVal('Ngày phát sinh', 'Ngày', 'Ngay', 'ngayStr') || '--',
+        thang: parseInt(findVal('Tháng', 'Thang')) || 1,
+        nam: parseInt(findVal('Năm', 'Nam')) || 2026,
+        noiDung: findVal('Nội dung', 'Nội dung vụ việc', 'Noi dung') || '',
+        loai: findVal('Loại chăm lo', 'Loại', 'Loai') || 'Khác',
+        soTien: parseInt(findVal('Kinh phí', 'Mức đề nghị', 'Số tiền', 'So tien')) || 0,
+        nguoiHoTro: findVal('Người được hỗ trợ', 'Người được tham/hỗ trợ', 'Nguoi ho tro'),
+        doanVien: findVal('Đoàn viên', 'Đoàn viên liên quan', 'Doan vien'),
+        quanHe: findVal('Quan hệ', 'Quan he'),
+        lyDo: findVal('Lý do', 'Ly do'),
+        nguoiThucHien: findVal('Người thực hiện', 'Nguoi thuc hien'),
+        diaBan: findVal('Địa bàn', 'Dia ban'),
+        donVi: findVal('Đơn vị', 'Don vi'),
+        trangThai: findVal('Trạng thái', 'Trang thai') || 'Đã hoàn thành',
+        canhBao: findVal('Cảnh báo', 'Canh bao') || 'Đúng hạn'
+      };
+    });
   }
 
   const baseRecords = baseList.map(r => edits[r.ma] ? { ...r, ...edits[r.ma] } : r);
