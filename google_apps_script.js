@@ -27,12 +27,27 @@ function getSpreadsheet() {
 
 function doGet(e) {
   var action = e && e.parameter && e.parameter.action ? e.parameter.action : 'getData';
+  var callback = e && e.parameter && e.parameter.callback ? e.parameter.callback : (e && e.parameter && e.parameter.prefix ? e.parameter.prefix : null);
   
+  var data;
   if (action === 'getData') {
-    return handleGetData();
+    data = handleGetDataRaw();
+  } else {
+    data = { status: 'ok', message: 'API Cong Doan So Active', spreadsheetId: SPREADSHEET_ID };
   }
   
-  return respondJSON({ status: 'ok', message: 'API Cong Doan So Active', spreadsheetId: SPREADSHEET_ID });
+  return respondOutput(data, callback);
+}
+
+function handleGetDataRaw() {
+  var ss = getSpreadsheet();
+  return {
+    status: 'success',
+    timestamp: new Date().toISOString(),
+    DL_CHAM_LO: readSheetData(ss, 'DL_CHAM_LO'),
+    TIEP_NHAN: readSheetData(ss, 'TIEP_NHAN'),
+    QUY_CHE: readSheetData(ss, 'QUY_CHE')
+  };
 }
 
 function doPost(e) {
@@ -185,6 +200,15 @@ function mapKey(header) {
 }
 
 function respondJSON(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
+  return respondOutput(data, null);
+}
+
+function respondOutput(data, callback) {
+  var jsonStr = JSON.stringify(data);
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + jsonStr + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(jsonStr)
     .setMimeType(ContentService.MimeType.JSON);
 }

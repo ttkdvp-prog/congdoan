@@ -80,21 +80,68 @@ function saveRemoteData(data) {
   localStorage.setItem('congdoan_remote_data', JSON.stringify(data));
 }
 
+function fetchFromGoogleSheetJSONP(url) {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'gsp_cb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Timeout connecting to Google Sheet Apps Script'));
+    }, 12000);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      const el = document.getElementById(callbackName);
+      if (el) el.remove();
+    }
+
+    window[callbackName] = function(data) {
+      cleanup();
+      resolve(data);
+    };
+
+    const script = document.createElement('script');
+    script.id = callbackName;
+    const delim = url.includes('?') ? '&' : '?';
+    script.src = url + delim + 'action=getData&callback=' + callbackName + '&_t=' + Date.now();
+    script.onerror = function(err) {
+      cleanup();
+      reject(err);
+    };
+    document.body.appendChild(script);
+  });
+}
+
 async function fetchFromGoogleSheet() {
   if (!APPS_SCRIPT_URL) return false;
+  if (APPS_SCRIPT_URL.includes('googleusercontent.com')) {
+    updateSyncStatusUI(false);
+    return false;
+  }
+
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=getData');
-    if (!res.ok) return false;
-    const json = await res.json();
+    const json = await fetchFromGoogleSheetJSONP(APPS_SCRIPT_URL);
     if (json && json.status === 'success') {
       saveRemoteData(json);
       updateSyncStatusUI(true);
       return true;
     }
   } catch (err) {
-    console.warn('Google Sheet Sync Error:', err);
-    updateSyncStatusUI(false);
+    try {
+      const res = await fetch(APPS_SCRIPT_URL + (APPS_SCRIPT_URL.includes('?') ? '&' : '?') + 'action=getData');
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.status === 'success') {
+          saveRemoteData(json);
+          updateSyncStatusUI(true);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('Google Sheet fetch error:', e);
+    }
   }
+  updateSyncStatusUI(false);
   return false;
 }
 
@@ -882,6 +929,12 @@ function closeSyncModal() {
 
 async function saveSyncUrl() {
   const url = document.getElementById('inputAppsScriptUrl').value.trim();
+
+  if (url.includes('googleusercontent.com')) {
+    showToast('❌ Bạn đã dán link tạm thời (echo)! Vui lòng copy link chuẩn từ nút Deploy có dạng: https://script.google.com/macros/s/.../exec', 'error');
+    return;
+  }
+
   APPS_SCRIPT_URL = url;
   localStorage.setItem('congdoan_apps_script_url', url);
 
@@ -895,31 +948,44 @@ async function saveSyncUrl() {
   showToast('Đang kết nối tới Google Sheet...', 'info');
   const ok = await fetchFromGoogleSheet();
   if (ok) {
-    showToast('Kết nối & đồng bộ Google Sheet thành công!', 'success');
+    showToast('✅ Kết nối & đồng bộ Google Sheet thành công!', 'success');
     closeSyncModal();
     renderDashboard();
     if (currentPage === 'hoso') renderHoSoTable();
   } else {
-    showToast('Không thể kết nối. Vui lòng kiểm tra lại URL Apps Script (quyền: Anyone)', 'error');
+    showToast('❌ Thất bại. Kiểm tra lại URL Apps Script (phải để: Who has access: Anyone)', 'error');
   }
 }
 
 async function testSyncConnection() {
   const url = document.getElementById('inputAppsScriptUrl').value.trim();
   if (!url) {
-    showToast('Vui lòng nhập URL trước khi kiểm tra', 'error');
+    showToast('Vui lòng nhập Web App URL trước khi kiểm tra', 'error');
     return;
   }
-  showToast('Đang kiểm tra kết nối...', 'info');
+
+  if (url.includes('googleusercontent.com')) {
+    showToast('❌ Bạn đã dán link tạm thời (echo)! Vui lòng copy link chuẩn dạng: https://script.google.com/macros/s/.../exec', 'error');
+    return;
+  }
+
+  showToast('Đang kiểm tra kết nối tới Google Sheet...', 'info');
   try {
-    const res = await fetch(url + '?action=getData');
-    const json = await res.json();
-    if (json && json.status === 'success') {
-      showToast('✅ Kết nối thành công! Đã kết nối tới Google Sheet.', 'success');
+    const data = await fetchFromGoogleSheetJSONP(url);
+    if (data && data.status === 'success') {
+      showToast('✅ Kết nối thành công! Đã đọc dữ liệu từ Google Sheet thành công.', 'success');
     } else {
-      showToast('⚠️ Phản hồi không đúng định dạng. Hãy kiểm tra lại Apps Script.', 'error');
+      showToast('⚠️ Phản hồi chưa đúng định dạng. Vui lòng dán lại mã Code.gs mới nhất.', 'error');
     }
   } catch (err) {
+    try {
+      const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=getData');
+      const json = await res.json();
+      if (json && json.status === 'success') {
+        showToast('✅ Kết nối thành công! Đã đọc dữ liệu từ Google Sheet.', 'success');
+        return;
+      }
+    } catch (e) {}
     showToast('❌ Thất bại. Vui lòng kiểm tra lại URL và quyền truy cập "Anyone".', 'error');
   }
 }
