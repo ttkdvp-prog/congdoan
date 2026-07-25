@@ -930,8 +930,13 @@ function closeSyncModal() {
 async function saveSyncUrl() {
   const url = document.getElementById('inputAppsScriptUrl').value.trim();
 
+  if (url.includes('/macros/library/') || url.includes('/home/projects/')) {
+    showToast('❌ Bạn đang dán link Thư viện/Dự án! Vui lòng bấm "Triển khai (Deploy) ➔ Web App" để lấy link có dạng https://script.google.com/macros/s/.../exec', 'error');
+    return;
+  }
+
   if (url.includes('googleusercontent.com')) {
-    showToast('❌ Bạn đã dán link tạm thời (echo)! Vui lòng copy link chuẩn từ nút Deploy có dạng: https://script.google.com/macros/s/.../exec', 'error');
+    showToast('❌ Bạn đang dán link tạm thời (echo)! Vui lòng copy link chuẩn từ nút Deploy có dạng: https://script.google.com/macros/s/.../exec', 'error');
     return;
   }
 
@@ -964,8 +969,13 @@ async function testSyncConnection() {
     return;
   }
 
+  if (url.includes('/macros/library/') || url.includes('/home/projects/')) {
+    showToast('❌ Bạn đang dán link Thư viện/Dự án! Vui lòng bấm "Triển khai (Deploy) ➔ Ứng dụng web" để lấy link có dạng .../exec', 'error');
+    return;
+  }
+
   if (url.includes('googleusercontent.com')) {
-    showToast('❌ Bạn đã dán link tạm thời (echo)! Vui lòng copy link chuẩn dạng: https://script.google.com/macros/s/.../exec', 'error');
+    showToast('❌ Bạn đang dán link tạm thời (echo)! Vui lòng copy link chuẩn dạng: https://script.google.com/macros/s/.../exec', 'error');
     return;
   }
 
