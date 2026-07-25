@@ -89,6 +89,12 @@ function readSheetData(ss, sheetName) {
   return rows;
 }
 
+function isCompletedStatus(status) {
+  if (!status) return false;
+  var s = String(status).toLowerCase();
+  return s.indexOf('hoàn thành') !== -1 || s.indexOf('hoan thanh') !== -1 || s.indexOf('duyệt') !== -1;
+}
+
 function handleCreate(payload) {
   var ss = getSpreadsheet();
   
@@ -98,8 +104,8 @@ function handleCreate(payload) {
     appendRowToSheet(sheetTiepNhan, payload);
   }
   
-  // 2. If status is "Đã hoàn thành", write to DL_CHAM_LO sheet as well
-  if (payload.trangThai === 'Đã hoàn thành') {
+  // 2. If status is completed ("Đã hoàn thành"), write to DL_CHAM_LO sheet as well
+  if (isCompletedStatus(payload.trangThai)) {
     var sheetChamLo = ss.getSheetByName('DL_CHAM_LO');
     if (sheetChamLo) {
       appendRowToSheet(sheetChamLo, payload);
@@ -118,19 +124,20 @@ function handleUpdate(payload) {
     var sheet = ss.getSheetByName(sheets[s]);
     if (!sheet) continue;
     
-    var res = updateRowInSheet(sheet, payload);
-    if (res) updated = true;
+    if (updateRowInSheet(sheet, payload)) updated = true;
   }
   
-  // If status is "Đã hoàn thành", ensure it exists in DL_CHAM_LO
-  if (payload.trangThai === 'Đã hoàn thành') {
+  // If status is completed, ensure it exists in DL_CHAM_LO sheet
+  if (isCompletedStatus(payload.trangThai)) {
     var sheetChamLo = ss.getSheetByName('DL_CHAM_LO');
     if (sheetChamLo) {
-      var existsInChamLo = findRowIndexByMa(sheetChamLo, payload.ma);
-      if (existsInChamLo === -1) {
+      var rowIdx = findRowIndexByMa(sheetChamLo, payload.ma);
+      if (rowIdx === -1) {
         appendRowToSheet(sheetChamLo, payload);
-        updated = true;
+      } else {
+        updateRowInSheet(sheetChamLo, payload);
       }
+      updated = true;
     }
   }
   
@@ -201,15 +208,10 @@ function appendRowToSheet(sheet, payload) {
 function getPayloadVal(payload, header) {
   var hLower = header.toLowerCase().replace(/[^a-z0-9]/g, '');
   
-  // Exact match
   if (payload[header] !== undefined) return payload[header];
   
-  // Map by known headers
   if (hLower.indexOf('ma') !== -1) return payload.ma;
   if (hLower.indexOf('ngay') !== -1) {
-    if (hLower.indexOf('hoanthanh') !== -1 || hLower.indexOf('chi') !== -1 || hLower.indexOf('duyet') !== -1) {
-      return payload.ngayStr || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy");
-    }
     return payload.ngayStr || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy");
   }
   if (hLower.indexOf('nam') !== -1) return payload.nam || new Date().getFullYear();
@@ -219,8 +221,7 @@ function getPayloadVal(payload, header) {
   if (hLower.indexOf('tien') !== -1 || hLower.indexOf('kinhphi') !== -1 || hLower.indexOf('muc') !== -1) return payload.soTien;
   if (hLower.indexOf('nguoidenghi') !== -1 || hLower.indexOf('nguoithuchien') !== -1) return payload.nguoiDeNghi || payload.nguoiThucHien;
   if (hLower.indexOf('diaban') !== -1 || hLower.indexOf('to') !== -1) return payload.diaBan;
-  if (hLower.indexOf('hotro') !== -1) return payload.nguoiHoTro || payload.doanVien;
-  if (hLower.indexOf('doanvien') !== -1) return payload.doanVien || payload.nguoiHoTro;
+  if (hLower.indexOf('hotro') !== -1 || hLower.indexOf('doanvien') !== -1) return payload.doanVien || payload.nguoiHoTro;
   if (hLower.indexOf('quanhe') !== -1) return payload.quanHe;
   if (hLower.indexOf('trangthai') !== -1) return payload.trangThai;
   if (hLower.indexOf('canhbao') !== -1) return payload.canhBao;

@@ -147,15 +147,20 @@ async function fetchFromGoogleSheet() {
 }
 
 async function sendToGoogleSheet(action, payload) {
-  if (!APPS_SCRIPT_URL) return;
+  let targetUrl = APPS_SCRIPT_URL;
+  if (!targetUrl || targetUrl.includes('googleusercontent.com') || targetUrl.includes('/library/')) {
+    targetUrl = DEFAULT_APPS_SCRIPT_URL;
+    APPS_SCRIPT_URL = DEFAULT_APPS_SCRIPT_URL;
+    localStorage.setItem('congdoan_apps_script_url', DEFAULT_APPS_SCRIPT_URL);
+  }
+
   try {
-    await fetch(APPS_SCRIPT_URL, {
+    await fetch(targetUrl, {
       method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action, payload })
     });
-    setTimeout(fetchFromGoogleSheet, 1200);
+    setTimeout(fetchFromGoogleSheet, 1500);
   } catch (err) {
     console.warn('Google Sheet Post Error:', err);
   }
