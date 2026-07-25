@@ -65,6 +65,54 @@ const QUY_CHE = [
   {ma:"KHAC",ten:"Khác",tuKhoa:["khác"],muc:0,hoSo:"Hồ sơ theo nội dung phát sinh",thoiHan:"05 ngày",ghiChu:"BCH xem xét riêng",icon:"📁",color:"type-khac",gradient:"linear-gradient(135deg,#64748b,#94a3b8)"}
 ];
 
+// ── GOOGLE APPS SCRIPT SYNC CONFIG ──
+let APPS_SCRIPT_URL = localStorage.getItem('congdoan_apps_script_url') || '';
+let remoteSheetData = null;
+
+function getRemoteData() {
+  try {
+    return JSON.parse(localStorage.getItem('congdoan_remote_data') || 'null');
+  } catch { return null; }
+}
+
+function saveRemoteData(data) {
+  remoteSheetData = data;
+  localStorage.setItem('congdoan_remote_data', JSON.stringify(data));
+}
+
+async function fetchFromGoogleSheet() {
+  if (!APPS_SCRIPT_URL) return false;
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getData');
+    if (!res.ok) return false;
+    const json = await res.json();
+    if (json && json.status === 'success') {
+      saveRemoteData(json);
+      updateSyncStatusUI(true);
+      return true;
+    }
+  } catch (err) {
+    console.warn('Google Sheet Sync Error:', err);
+    updateSyncStatusUI(false);
+  }
+  return false;
+}
+
+async function sendToGoogleSheet(action, payload) {
+  if (!APPS_SCRIPT_URL) return;
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, payload })
+    });
+    setTimeout(fetchFromGoogleSheet, 1200);
+  } catch (err) {
+    console.warn('Google Sheet Post Error:', err);
+  }
+}
+
 // ── SUBMITTED CASES & EDITS (localStorage) ──
 function getSubmittedCases() {
   try {
@@ -91,8 +139,31 @@ function saveCustomEdit(ma, editData) {
 function getAllRecords() {
   const submitted = getSubmittedCases();
   const edits = getCustomEdits();
+  const remote = getRemoteData();
 
-  const baseRecords = DL_CHAM_LO.map(r => edits[r.ma] ? { ...r, ...edits[r.ma] } : r);
+  let baseList = DL_CHAM_LO;
+  if (remote && remote.DL_CHAM_LO && remote.DL_CHAM_LO.length > 0) {
+    baseList = remote.DL_CHAM_LO.map(r => ({
+      ma: r['Mã hồ sơ'] || r['Mã'] || r.ma || 'LS-00',
+      ngayStr: r['Ngày'] || r.ngayStr,
+      thang: parseInt(r['Tháng']) || r.thang || 1,
+      nam: parseInt(r['Năm']) || r.nam || 2026,
+      noiDung: r['Nội dung'] || r['Nội dung vụ việc'] || r.noiDung || '',
+      loai: r['Loại chăm lo'] || r['Loại'] || r.loai || 'Khác',
+      soTien: parseInt(r['Kinh phí'] || r['Mức đề nghị'] || r['Số tiền'] || r.soTien) || 0,
+      nguoiHoTro: r['Người được hỗ trợ'] || r.nguoiHoTro || null,
+      doanVien: r['Đoàn viên'] || r.doanVien || null,
+      quanHe: r['Quan hệ'] || r.quanHe || null,
+      lyDo: r['Lý do'] || r.lyDo || null,
+      nguoiThucHien: r['Người thực hiện'] || r.nguoiThucHien || null,
+      diaBan: r['Địa bàn'] || r.diaBan || null,
+      donVi: r['Đơn vị'] || r.donVi || null,
+      trangThai: r['Trạng thái'] || r.trangThai || 'Đã hoàn thành',
+      canhBao: r['Cảnh báo'] || r.canhBao || 'Đúng hạn'
+    }));
+  }
+
+  const baseRecords = baseList.map(r => edits[r.ma] ? { ...r, ...edits[r.ma] } : r);
   const submittedRecords = submitted.map(r => edits[r.ma] ? { ...r, ...edits[r.ma] } : r);
 
   return [...baseRecords, ...submittedRecords];
@@ -688,6 +759,7 @@ function approveCase(ma) {
   }
 
   saveCustomEdit(ma, { trangThai: 'Đã hoàn thành', canhBao: 'Đúng hạn' });
+  sendToGoogleSheet('approve', { ma, trangThai: 'Đã hoàn thành', canhBao: 'Đúng hạn' });
 
   closeModal();
   showToast(`Đã duyệt hồ sơ ${ma} thành công!`, 'success');
@@ -709,6 +781,7 @@ function rejectCase(ma) {
   }
 
   saveCustomEdit(ma, { trangThai: 'Từ chối', canhBao: 'Từ chối' });
+  sendToGoogleSheet('update', { ma, trangThai: 'Từ chối', canhBao: 'Từ chối' });
 
   closeModal();
   showToast(`Đã từ chối hồ sơ ${ma}`, 'warning');
@@ -758,29 +831,8 @@ function handleEditSubmit(e) {
 
   const soTien = parseInt(mucStr.replace(/\D/g, '')) || 0;
 
-  // Update in submitted cases if present
-  const submitted = getSubmittedCases();
-  const subIdx = submitted.findIndex(c => c.ma === ma);
-  if (subIdx !== -1) {
-    submitted[subIdx] = {
-      ...submitted[subIdx],
-      loai,
-      noiDung,
-      lyDo: noiDung,
-      soTien,
-      diaBan: diaBan !== 'Khác' ? diaBan : null,
-      doanVien: doanVien || null,
-      nguoiHoTro: doanVien || null,
-      nguoiDeNghi: nguoiDeNghi || null,
-      nguoiThucHien: nguoiDeNghi || null,
-      trangThai,
-      canhBao
-    };
-    saveSubmittedCases(submitted);
-  }
-
-  // Always save custom edit override so it persists for any base or submitted case
-  saveCustomEdit(ma, {
+  const editPayload = {
+    ma,
     loai,
     noiDung,
     lyDo: noiDung,
@@ -792,7 +844,21 @@ function handleEditSubmit(e) {
     nguoiThucHien: nguoiDeNghi || null,
     trangThai,
     canhBao
-  });
+  };
+
+  // Update in submitted cases if present
+  const submitted = getSubmittedCases();
+  const subIdx = submitted.findIndex(c => c.ma === ma);
+  if (subIdx !== -1) {
+    submitted[subIdx] = { ...submitted[subIdx], ...editPayload };
+    saveSubmittedCases(submitted);
+  }
+
+  // Always save custom edit override so it persists
+  saveCustomEdit(ma, editPayload);
+
+  // Send to Google Sheet API
+  sendToGoogleSheet('update', editPayload);
 
   closeEditModal();
   showToast(`Đã cập nhật hồ sơ ${ma} thành công!`, 'success');
@@ -802,6 +868,76 @@ function handleEditSubmit(e) {
   renderSubmitted();
   if (currentPage === 'hoso') renderHoSoTable();
   if (currentPage === 'dashboard') renderDashboard();
+}
+
+// ── SYNC MODAL HANDLERS ──
+function openSyncModal() {
+  document.getElementById('inputAppsScriptUrl').value = APPS_SCRIPT_URL;
+  document.getElementById('syncModal').classList.add('active');
+}
+
+function closeSyncModal() {
+  document.getElementById('syncModal').classList.remove('active');
+}
+
+async function saveSyncUrl() {
+  const url = document.getElementById('inputAppsScriptUrl').value.trim();
+  APPS_SCRIPT_URL = url;
+  localStorage.setItem('congdoan_apps_script_url', url);
+
+  if (!url) {
+    showToast('Đã xóa cấu hình Google Sheet URL', 'info');
+    updateSyncStatusUI(false);
+    closeSyncModal();
+    return;
+  }
+
+  showToast('Đang kết nối tới Google Sheet...', 'info');
+  const ok = await fetchFromGoogleSheet();
+  if (ok) {
+    showToast('Kết nối & đồng bộ Google Sheet thành công!', 'success');
+    closeSyncModal();
+    renderDashboard();
+    if (currentPage === 'hoso') renderHoSoTable();
+  } else {
+    showToast('Không thể kết nối. Vui lòng kiểm tra lại URL Apps Script (quyền: Anyone)', 'error');
+  }
+}
+
+async function testSyncConnection() {
+  const url = document.getElementById('inputAppsScriptUrl').value.trim();
+  if (!url) {
+    showToast('Vui lòng nhập URL trước khi kiểm tra', 'error');
+    return;
+  }
+  showToast('Đang kiểm tra kết nối...', 'info');
+  try {
+    const res = await fetch(url + '?action=getData');
+    const json = await res.json();
+    if (json && json.status === 'success') {
+      showToast('✅ Kết nối thành công! Đã kết nối tới Google Sheet.', 'success');
+    } else {
+      showToast('⚠️ Phản hồi không đúng định dạng. Hãy kiểm tra lại Apps Script.', 'error');
+    }
+  } catch (err) {
+    showToast('❌ Thất bại. Vui lòng kiểm tra lại URL và quyền truy cập "Anyone".', 'error');
+  }
+}
+
+function updateSyncStatusUI(isConnected) {
+  const iconEl = document.getElementById('syncStatusIcon');
+  const textEl = document.getElementById('syncStatusText');
+  if (!iconEl || !textEl) return;
+  if (isConnected && APPS_SCRIPT_URL) {
+    iconEl.textContent = '🟢';
+    textEl.textContent = 'Đã kết nối Sheet';
+  } else if (APPS_SCRIPT_URL) {
+    iconEl.textContent = '🟡';
+    textEl.textContent = 'Đang dùng bộ nhớ';
+  } else {
+    iconEl.textContent = '📊';
+    textEl.textContent = 'Google Sheet';
+  }
 }
 
 function closeModal() {
@@ -983,6 +1119,9 @@ function handleFormSubmit(e) {
   cases.push(newCase);
   saveSubmittedCases(cases);
 
+  // Send to Google Sheet API if connected
+  sendToGoogleSheet('create', newCase);
+
   showToast(`Đã gửi đề nghị ${ma} thành công!`, 'success');
 
   resetForm();
@@ -1036,6 +1175,9 @@ function setupEventListeners() {
   document.getElementById('editModal').addEventListener('click', (e) => {
     if (e.target === document.getElementById('editModal')) closeEditModal();
   });
+  document.getElementById('syncModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('syncModal')) closeSyncModal();
+  });
 
   // Auto-format currency on edit amount
   document.getElementById('editSoTien').addEventListener('input', (e) => {
@@ -1048,6 +1190,7 @@ function setupEventListeners() {
     if (e.key === 'Escape') {
       closeModal();
       closeEditModal();
+      closeSyncModal();
     }
   });
 
@@ -1078,7 +1221,7 @@ function setupEventListeners() {
 }
 
 // ── INIT ──
-function init() {
+async function init() {
   // Set current date
   const now = new Date();
   document.getElementById('currentDate').textContent = now.toLocaleDateString('vi-VN', {
@@ -1100,6 +1243,17 @@ function init() {
 
   // Update badges
   updateBadges();
+
+  // Try background sync with Google Sheet if configured
+  if (APPS_SCRIPT_URL) {
+    const ok = await fetchFromGoogleSheet();
+    if (ok) {
+      renderDashboard();
+      if (currentPage === 'hoso') renderHoSoTable();
+    }
+  } else {
+    updateSyncStatusUI(false);
+  }
 }
 
 // Start

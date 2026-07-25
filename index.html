@@ -72,6 +72,9 @@
         <span id="topbarPage">Tổng quan</span>
       </span>
       <div class="topbar-actions">
+        <button class="btn btn-sm btn-secondary" onclick="openSyncModal()" title="Cấu hình kết nối Google Sheet">
+          <span id="syncStatusIcon">📊</span> <span id="syncStatusText">Google Sheet</span>
+        </button>
         <span style="font-size:12px;color:var(--text-tertiary)" id="currentDate"></span>
       </div>
     </header>
@@ -587,6 +590,36 @@
           <button type="submit" class="btn btn-sm btn-primary">💾 Lưu thay đổi</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ GOOGLE SHEET SYNC MODAL ═══════ -->
+<div class="modal-overlay" id="syncModal">
+  <div class="modal-content" style="max-width: 580px;">
+    <div class="modal-header">
+      <span class="modal-title">📊 Kết nối Google Sheets</span>
+      <button class="modal-close" onclick="closeSyncModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+        Dán <strong>Web App URL</strong> từ Google Apps Script bên dưới để kết nối và đồng bộ dữ liệu trực tiếp với file Google Sheet của bạn.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Google Apps Script Web App URL</label>
+        <input class="form-input" type="text" id="inputAppsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
+
+      <div style="margin-top:12px;font-size:12px;color:var(--text-tertiary);background:rgba(99,102,241,0.05);padding:12px;border-radius:var(--radius-sm);line-height:1.5">
+        💡 Mã nguồn <code>google_apps_script.js</code> đã có sẵn trong thư mục dự án. Bạn chỉ cần dán mã đó vào <strong>Extensions ➔ Apps Script</strong> trên file Google Sheet của bạn và triển khai (Deploy) làm Ứng dụng web (Web App - Anyone).
+      </div>
+
+      <div class="modal-footer" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-subtle);display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-sm btn-secondary" onclick="closeSyncModal()">Đóng</button>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="testSyncConnection()">⚡ Kiểm tra kết nối</button>
+        <button type="button" class="btn btn-sm btn-primary" onclick="saveSyncUrl()">💾 Lưu & Đồng bộ</button>
+      </div>
     </div>
   </div>
 </div>
