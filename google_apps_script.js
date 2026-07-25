@@ -42,8 +42,17 @@ function doPost(e) {
   }
 }
 
+function getSpreadsheet() {
+  var SPREADSHEET_ID = '1tkGGIDQbiJj45MCdWXYFrA66u7ovWjK5EHvVLyLfGFc';
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss) return ss;
+  } catch (e) {}
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
+
 function handleGetData() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSpreadsheet();
   
   var result = {
     status: 'success',
@@ -83,7 +92,7 @@ function readSheetData(ss, sheetName) {
 }
 
 function handleCreate(payload) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSpreadsheet();
   var sheet = ss.getSheetByName('TIEP_NHAN') || ss.getSheetByName('DL_CHAM_LO');
   
   if (!sheet) {
@@ -103,7 +112,7 @@ function handleCreate(payload) {
 }
 
 function handleUpdate(payload) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSpreadsheet();
   var sheets = ['TIEP_NHAN', 'DL_CHAM_LO'];
   var updated = false;
   
