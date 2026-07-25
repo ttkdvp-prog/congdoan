@@ -189,10 +189,56 @@ function saveCustomEdit(ma, editData) {
   localStorage.setItem('congdoan_custom_edits', JSON.stringify(edits));
 }
 
+function getDeletedRecords() {
+  try {
+    return JSON.parse(localStorage.getItem('congdoan_deleted_records') || '[]');
+  } catch { return []; }
+}
+
+function deleteRecord(ma) {
+  if (!confirm(`⚠️ Bạn có chắc chắn muốn XÓA hồ sơ [${ma}] không?\n\nHành động này sẽ xóa hẳn hồ sơ khỏi ứng dụng và Google Sheet!`)) {
+    return;
+  }
+
+  // 1. Mark as deleted in localStorage
+  const deleted = getDeletedRecords();
+  if (!deleted.includes(ma)) {
+    deleted.push(ma);
+    localStorage.setItem('congdoan_deleted_records', JSON.stringify(deleted));
+  }
+
+  // 2. Remove from submitted cases if present
+  let submitted = getSubmittedCases();
+  submitted = submitted.filter(c => c.ma !== ma);
+  saveSubmittedCases(submitted);
+
+  // 3. Remove custom edit
+  const edits = getCustomEdits();
+  delete edits[ma];
+  localStorage.setItem('congdoan_custom_edits', JSON.stringify(edits));
+
+  // 4. Send delete request to Google Sheet API
+  sendToGoogleSheet('delete', { ma });
+
+  // 5. Close active modals
+  closeModal();
+  closeEditModal();
+
+  // 6. Show notification toast
+  showToast(`✅ Đã xóa thành công hồ sơ ${ma}`, 'success');
+
+  // 7. Refresh all UI views & badges
+  updateBadges();
+  renderSubmitted();
+  if (currentPage === 'hoso') renderHoSoTable();
+  if (currentPage === 'dashboard') renderDashboard();
+}
+
 function getAllRecords() {
   const submitted = getSubmittedCases();
   const edits = getCustomEdits();
   const remote = getRemoteData();
+  const deleted = getDeletedRecords();
 
   let baseList = DL_CHAM_LO;
   if (remote && remote.DL_CHAM_LO && remote.DL_CHAM_LO.length > 0) {
@@ -235,7 +281,9 @@ function getAllRecords() {
   const baseRecords = baseList.map(r => edits[r.ma] ? { ...r, ...edits[r.ma] } : r);
   const submittedRecords = submitted.map(r => edits[r.ma] ? { ...r, ...edits[r.ma] } : r);
 
-  return [...baseRecords, ...submittedRecords];
+  const combined = [...baseRecords, ...submittedRecords];
+  // Filter out deleted records
+  return combined.filter(r => !deleted.includes(r.ma));
 }
 
 // ── HELPERS ──
@@ -711,7 +759,7 @@ function renderHoSoTable() {
 
   const tbody = document.getElementById('hosoTableBody');
   if (pageData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📭</div><h3>Không tìm thấy hồ sơ</h3><p>Thử thay đổi bộ lọc</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">📭</div><h3>Không tìm thấy hồ sơ</h3><p>Thử thay đổi bộ lọc</p></div></td></tr>';
   } else {
     tbody.innerHTML = pageData.map(r => `
       <tr onclick="showDetail('${r.ma}')">
@@ -724,6 +772,10 @@ function renderHoSoTable() {
         <td>${r.diaBan || '--'}</td>
         <td>${getStatusBadge(r.trangThai)}</td>
         <td>${getCanhBaoBadge(r.canhBao)}</td>
+        <td onclick="event.stopPropagation()" style="text-align:center;white-space:nowrap">
+          <button class="btn btn-sm btn-secondary" onclick="openEditModal('${r.ma}')" title="Chỉnh sửa" style="padding:3px 8px;font-size:12px;margin-right:4px">✏️ Sửa</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteRecord('${r.ma}')" title="Xóa hồ sơ" style="padding:3px 8px;font-size:12px;background:rgba(239,68,68,0.12);color:#dc2626;border:1px solid rgba(239,68,68,0.25)">🗑️ Xóa</button>
+        </td>
       </tr>
     `).join('');
   }
@@ -811,6 +863,7 @@ function showDetail(ma) {
     buttons += `<button class="btn btn-sm btn-secondary" onclick="rejectCase('${record.ma}')" style="background:rgba(239,68,68,0.1);color:#dc2626;border-color:rgba(239,68,68,0.2)">❌ Từ chối</button>`;
   }
   buttons += `<button class="btn btn-sm btn-primary" onclick="openEditModal('${record.ma}')">✏️ Sửa hồ sơ</button>`;
+  buttons += `<button class="btn btn-sm btn-danger" onclick="deleteRecord('${record.ma}')" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3)">🗑️ Xóa</button>`;
   buttons += `<button class="btn btn-sm btn-secondary" onclick="closeModal()">Đóng</button>`;
   footer.innerHTML = buttons;
 
@@ -1230,11 +1283,12 @@ function handleFormSubmit(e) {
 }
 
 function renderSubmitted() {
-  const cases = getSubmittedCases();
+  const deleted = getDeletedRecords();
+  const cases = getSubmittedCases().filter(c => !deleted.includes(c.ma));
   const tbody = document.getElementById('submittedTableBody');
 
   if (cases.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><h3>Chưa có đề nghị nào</h3><p>Nhập form bên trên để gửi đề nghị mới</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📭</div><h3>Chưa có đề nghị nào</h3><p>Nhập form bên trên để gửi đề nghị mới</p></div></td></tr>';
     return;
   }
 
@@ -1246,6 +1300,10 @@ function renderSubmitted() {
       <td><span class="type-tag ${getTypeClass(r.loai)}">${r.loai}</span></td>
       <td style="font-weight:600;color:var(--text-primary)">${formatCurrency(r.soTien)}</td>
       <td>${getStatusBadge(r.trangThai)}</td>
+      <td onclick="event.stopPropagation()" style="text-align:center;white-space:nowrap">
+        <button class="btn btn-sm btn-secondary" onclick="openEditModal('${r.ma}')" title="Chỉnh sửa" style="padding:3px 8px;font-size:12px;margin-right:4px">✏️ Sửa</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteRecord('${r.ma}')" title="Xóa hồ sơ" style="padding:3px 8px;font-size:12px;background:rgba(239,68,68,0.12);color:#dc2626;border:1px solid rgba(239,68,68,0.25)">🗑️ Xóa</button>
+      </td>
     </tr>
   `).join('');
 }

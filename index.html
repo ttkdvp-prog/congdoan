@@ -346,6 +346,7 @@
                 <th>Loại</th>
                 <th>Mức đề nghị</th>
                 <th>Trạng thái</th>
+                <th style="width:110px;text-align:center">Thao tác</th>
               </tr>
             </thead>
             <tbody id="submittedTableBody">
@@ -421,6 +422,7 @@
                 <th>Địa bàn</th>
                 <th>Trạng thái</th>
                 <th>Cảnh báo</th>
+                <th style="width:110px;text-align:center">Thao tác</th>
               </tr>
             </thead>
             <tbody id="hosoTableBody">
@@ -585,9 +587,12 @@
           </div>
         </div>
 
-        <div class="modal-footer" style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border-subtle)">
-          <button type="button" class="btn btn-sm btn-secondary" onclick="closeEditModal()">Hủy</button>
-          <button type="submit" class="btn btn-sm btn-primary">💾 Lưu thay đổi</button>
+        <div class="modal-footer" style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center">
+          <button type="button" class="btn btn-sm btn-danger" onclick="deleteRecord(document.getElementById('editMa').value)" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3)">🗑️ Xóa hồ sơ này</button>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="closeEditModal()">Hủy</button>
+            <button type="submit" class="btn btn-sm btn-primary">💾 Lưu thay đổi</button>
+          </div>
         </div>
       </form>
     </div>

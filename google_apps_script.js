@@ -51,12 +51,33 @@ function doPost(e) {
       return handleUpdate(data.payload);
     } else if (action === 'approve') {
       return handleApprove(data.payload);
+    } else if (action === 'delete') {
+      return handleDelete(data.payload);
     }
     
     return respondOutput({ status: 'error', message: 'Action không hợp lệ: ' + action }, null);
   } catch (err) {
     return respondOutput({ status: 'error', message: err.toString() }, null);
   }
+}
+
+function handleDelete(payload) {
+  var ss = getSpreadsheet();
+  var sheets = ['TIEP_NHAN', 'DL_CHAM_LO'];
+  var deleted = false;
+  
+  for (var s = 0; s < sheets.length; s++) {
+    var sheet = ss.getSheetByName(sheets[s]);
+    if (!sheet) continue;
+    
+    var rowIdx = findRowIndexByMa(sheet, payload.ma);
+    if (rowIdx !== -1) {
+      sheet.deleteRow(rowIdx);
+      deleted = true;
+    }
+  }
+  
+  return respondOutput({ status: deleted ? 'success' : 'not_found', message: deleted ? 'Đã xóa dòng khỏi Google Sheet' : 'Không tìm thấy dòng tương ứng' }, null);
 }
 
 function readSheetData(ss, sheetName) {
