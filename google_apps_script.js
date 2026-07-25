@@ -1,16 +1,29 @@
 /**
  * ============================================================================
  * CÔNG ĐOÀN SỐ - GOOGLE APPS SCRIPT BACKEND (Code.gs)
- * Hướng dẫn: 
- * 1. Mở file Google Sheet "He_thong_Cong_doan_so" trên Google Drive.
- * 2. Vào menu: Tiện ích mở rộng (Extensions) -> Apps Script.
- * 3. Dán toàn bộ mã nguồn bên dưới vào file Code.gs và bấm Lưu (Save).
- * 4. Bấm "Triển khai" (Deploy) -> "Tạo bản triển khai mới" (New deployment).
- * 5. Chọn loại: "Ứng dụng web" (Web App).
- * 6. Mục "Ai có quyền truy cập" (Who has access): Chọn "Bất kỳ ai" (Anyone).
- * 7. Bấm "Triển khai", cấp quyền truy cập và sao chép Web App URL thu được.
+ * Spreadsheet ID: 1tkGGIDQbiJj45MCdWXYFrA66u7ovWjK5EHvVLyLfGFc
+ * 
+ * Hướng dẫn 3 bước ngắn gọn:
+ * 1. Trên Google Sheet "He_thong_Cong_doan_so" (link bên dưới):
+ *    https://docs.google.com/spreadsheets/d/1tkGGIDQbiJj45MCdWXYFrA66u7ovWjK5EHvVLyLfGFc/edit
+ * 2. Vào menu "Tiện ích mở rộng" -> "Apps Script", dán toàn bộ mã này vào Code.gs và bấm Save (Lưu).
+ * 3. Bấm nút "Triển khai" (Deploy) ở góc trên bên phải -> "Tạo bản triển khai mới" (New deployment):
+ *    - Loại: Ứng dụng web (Web App)
+ *    - Thực thi dưới danh nghĩa: Tôi (Me)
+ *    - Ai có quyền truy cập: Bất kỳ ai (Anyone)
+ *    - Bấm Triển khai, cấp quyền và copy Web App URL thu được (dạng https://script.google.com/macros/s/.../exec).
  * ============================================================================
  */
+
+var SPREADSHEET_ID = "1tkGGIDQbiJj45MCdWXYFrA66u7ovWjK5EHvVLyLfGFc";
+
+function getSpreadsheet() {
+  try {
+    return SpreadsheetApp.openById(SPREADSHEET_ID);
+  } catch (e) {
+    return SpreadsheetApp.getActiveSpreadsheet();
+  }
+}
 
 function doGet(e) {
   var action = e && e.parameter && e.parameter.action ? e.parameter.action : 'getData';
@@ -19,8 +32,7 @@ function doGet(e) {
     return handleGetData();
   }
   
-  return ContentService.createTextOutput(JSON.stringify({ status: 'ok', message: 'API Cong Doan So active' }))
-    .setMimeType(ContentService.MimeType.JSON);
+  return respondJSON({ status: 'ok', message: 'API Cong Doan So Active', spreadsheetId: SPREADSHEET_ID });
 }
 
 function doPost(e) {
@@ -42,20 +54,12 @@ function doPost(e) {
   }
 }
 
-function getSpreadsheet() {
-  var SPREADSHEET_ID = '1tkGGIDQbiJj45MCdWXYFrA66u7ovWjK5EHvVLyLfGFc';
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (ss) return ss;
-  } catch (e) {}
-  return SpreadsheetApp.openById(SPREADSHEET_ID);
-}
-
 function handleGetData() {
   var ss = getSpreadsheet();
   
   var result = {
     status: 'success',
+    timestamp: new Date().toISOString(),
     DL_CHAM_LO: readSheetData(ss, 'DL_CHAM_LO'),
     TIEP_NHAN: readSheetData(ss, 'TIEP_NHAN'),
     QUY_CHE: readSheetData(ss, 'QUY_CHE')
@@ -82,6 +86,9 @@ function readSheetData(ss, sheetName) {
       var headerKey = String(headers[j]).trim();
       if (headerKey) {
         var val = row[j];
+        if (val instanceof Date) {
+          val = Utilities.formatDate(val, Session.getScriptTimeZone(), "dd/MM/yyyy");
+        }
         if (val !== "" && val !== null && val !== undefined) isEmpty = false;
         obj[headerKey] = val;
       }
@@ -96,7 +103,7 @@ function handleCreate(payload) {
   var sheet = ss.getSheetByName('TIEP_NHAN') || ss.getSheetByName('DL_CHAM_LO');
   
   if (!sheet) {
-    return respondJSON({ status: 'error', message: 'Không tìm thấy sheet TIEP_NHAN hoặc DL_CHAM_LO' });
+    return respondJSON({ status: 'error', message: 'Không tìm thấy sheet TIEP_NHAN' });
   }
   
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -104,11 +111,12 @@ function handleCreate(payload) {
   
   for (var i = 0; i < headers.length; i++) {
     var key = String(headers[i]).trim();
-    newRow.push(payload[key] !== undefined ? payload[key] : (payload[mapKey(key)] !== undefined ? payload[mapKey(key)] : ''));
+    var val = payload[key] !== undefined ? payload[key] : (payload[mapKey(key)] !== undefined ? payload[mapKey(key)] : '');
+    newRow.push(val);
   }
   
   sheet.appendRow(newRow);
-  return respondJSON({ status: 'success', message: 'Đã thêm hồ sơ thành công', ma: payload.ma });
+  return respondJSON({ status: 'success', message: 'Đã lưu tự động vào Google Sheet thành công', ma: payload.ma });
 }
 
 function handleUpdate(payload) {
@@ -138,7 +146,6 @@ function handleUpdate(payload) {
     
     for (var r = 1; r < values.length; r++) {
       if (String(values[r][maColIdx]).trim() === String(payload.ma).trim()) {
-        // Found row to update
         for (var c = 0; c < headers.length; c++) {
           var key = String(headers[c]).trim();
           var val = payload[key] !== undefined ? payload[key] : payload[mapKey(key)];
@@ -153,7 +160,7 @@ function handleUpdate(payload) {
     if (updated) break;
   }
   
-  return respondJSON({ status: updated ? 'success' : 'not_found', message: updated ? 'Đã cập nhật hồ sơ' : 'Không tìm thấy mã hồ sơ trên Google Sheet' });
+  return respondJSON({ status: updated ? 'success' : 'not_found', message: updated ? 'Đã cập nhật dòng trong Google Sheet' : 'Không tìm thấy dòng tương ứng' });
 }
 
 function handleApprove(payload) {
@@ -171,7 +178,8 @@ function mapKey(header) {
     'Địa bàn': 'diaBan',
     'Đoàn viên': 'doanVien', 'Người được hỗ trợ': 'nguoiHoTro',
     'Trạng thái': 'trangThai',
-    'Cảnh báo': 'canhBao'
+    'Cảnh báo': 'canhBao',
+    'Ngày': 'ngayStr'
   };
   return mapping[header] || header;
 }

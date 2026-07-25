@@ -80,7 +80,7 @@ function saveRemoteData(data) {
   localStorage.setItem('congdoan_remote_data', JSON.stringify(data));
 }
 
-async function fetchFromGoogleSheet(silent = false) {
+async function fetchFromGoogleSheet() {
   if (!APPS_SCRIPT_URL) return false;
   try {
     const res = await fetch(APPS_SCRIPT_URL + '?action=getData');
@@ -89,14 +89,6 @@ async function fetchFromGoogleSheet(silent = false) {
     if (json && json.status === 'success') {
       saveRemoteData(json);
       updateSyncStatusUI(true);
-
-      // Auto refresh UI with latest data from Google Sheet
-      if (!silent) {
-        updateBadges();
-        if (currentPage === 'dashboard') renderDashboard();
-        if (currentPage === 'hoso') renderHoSoTable();
-        if (currentPage === 'tiepnhan') renderSubmitted();
-      }
       return true;
     }
   } catch (err) {
@@ -1254,13 +1246,19 @@ async function init() {
 
   // Try background sync with Google Sheet if configured
   if (APPS_SCRIPT_URL) {
-    await fetchFromGoogleSheet();
-
-    // Auto sync every 30 seconds
-    setInterval(() => fetchFromGoogleSheet(false), 30000);
-
-    // Auto sync when returning to tab
-    window.addEventListener('focus', () => fetchFromGoogleSheet(false));
+    const ok = await fetchFromGoogleSheet();
+    if (ok) {
+      renderDashboard();
+      if (currentPage === 'hoso') renderHoSoTable();
+    }
+    // Set periodic polling every 30s to pull changes made directly on Google Sheet
+    setInterval(async () => {
+      const updated = await fetchFromGoogleSheet();
+      if (updated) {
+        renderDashboard();
+        if (currentPage === 'hoso') renderHoSoTable();
+      }
+    }, 30000);
   } else {
     updateSyncStatusUI(false);
   }
