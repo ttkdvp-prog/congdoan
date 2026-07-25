@@ -613,7 +613,7 @@ function showDetail(ma) {
     ['Ngày phát sinh', record.ngay ? excelDateToStr(record.ngay) : (record.ngayStr || '--')],
     ['Nội dung', record.noiDung],
     ['Loại chăm lo', `<span class="type-tag ${getTypeClass(record.loai)}">${record.loai}</span>`],
-    ['Số tiền', `<strong style="color:var(--primary-400)">${formatCurrency(record.soTien)}</strong>`],
+    ['Số tiền', `<strong style="color:var(--primary-600)">${formatCurrency(record.soTien)}</strong>`],
     ['Người được hỗ trợ', record.nguoiHoTro || '--'],
     ['Đoàn viên liên quan', record.doanVien || '--'],
     ['Quan hệ', record.quanHe || '--'],
@@ -629,7 +629,61 @@ function showDetail(ma) {
     `<div class="detail-row"><span class="detail-label">${label}</span><span class="detail-value">${value}</span></div>`
   ).join('');
 
+  // Show approve/reject buttons for pending cases
+  const footer = document.getElementById('modalFooter');
+  if (record.trangThai === 'Chờ duyệt') {
+    footer.innerHTML = `
+      <button class="btn btn-sm btn-success" onclick="approveCase('${record.ma}')">✅ Duyệt</button>
+      <button class="btn btn-sm btn-secondary" onclick="rejectCase('${record.ma}')" style="background:rgba(239,68,68,0.1);color:#dc2626;border-color:rgba(239,68,68,0.2)">❌ Từ chối</button>
+      <button class="btn btn-sm btn-secondary" onclick="closeModal()">Đóng</button>
+    `;
+  } else {
+    footer.innerHTML = `<button class="btn btn-sm btn-secondary" onclick="closeModal()">Đóng</button>`;
+  }
+
   document.getElementById('detailModal').classList.add('active');
+}
+
+function approveCase(ma) {
+  const cases = getSubmittedCases();
+  const idx = cases.findIndex(c => c.ma === ma);
+  if (idx === -1) return;
+
+  cases[idx].trangThai = 'Đã hoàn thành';
+  cases[idx].canhBao = 'Đúng hạn';
+  cases[idx].ngayHT = Date.now();
+  saveSubmittedCases(cases);
+
+  closeModal();
+  showToast(`Đã duyệt hồ sơ ${ma} thành công!`, 'success');
+
+  // Refresh views
+  renderSubmitted();
+  updatePendingBadge();
+  if (currentPage === 'hoso') renderHoSo();
+  if (currentPage === 'dashboard') { buildCharts(); renderRecentTable(); animateCounters(); }
+}
+
+function rejectCase(ma) {
+  const cases = getSubmittedCases();
+  const idx = cases.findIndex(c => c.ma === ma);
+  if (idx === -1) return;
+
+  cases[idx].trangThai = 'Từ chối';
+  cases[idx].canhBao = 'Từ chối';
+  saveSubmittedCases(cases);
+
+  closeModal();
+  showToast(`Đã từ chối hồ sơ ${ma}`, 'warning');
+
+  renderSubmitted();
+  updatePendingBadge();
+  if (currentPage === 'hoso') renderHoSo();
+}
+
+function updatePendingBadge() {
+  const pending = getSubmittedCases().filter(c => c.trangThai === 'Chờ duyệt').length;
+  document.getElementById('badgePending').textContent = pending;
 }
 
 function closeModal() {
@@ -689,7 +743,7 @@ function generateMaHoSo() {
   return ma;
 }
 
-function aiClassify(text) {
+function classify(text) {
   if (!text || text.trim().length < 2) return null;
   const lower = text.toLowerCase();
 
@@ -706,17 +760,17 @@ function aiClassify(text) {
 
 function handleNoiDungChange() {
   const text = document.getElementById('inputNoiDung').value;
-  const result = aiClassify(text);
+  const result = classify(text);
 
   if (result && text.trim().length > 3) {
     // Set classification
     document.getElementById('inputLoaiChamLo').value = result.ten;
-    document.getElementById('aiClassLabel').innerHTML = `🤖 AI gợi ý: <strong>${result.ten}</strong>`;
+    document.getElementById('aiClassLabel').innerHTML = `📋 Gợi ý: <strong>${result.ten}</strong>`;
 
     // Set amount
     if (result.muc > 0) {
       document.getElementById('inputMucDeNghi').value = new Intl.NumberFormat('vi-VN').format(result.muc);
-      document.getElementById('aiMucLabel').innerHTML = `🤖 Mức tham khảo: <strong>${formatCurrency(result.muc)}</strong>`;
+      document.getElementById('aiMucLabel').innerHTML = `💰 Mức tham khảo: <strong>${formatCurrency(result.muc)}</strong>`;
     }
 
     // Show suggestion box
@@ -871,7 +925,7 @@ function setupEventListeners() {
   // Form
   document.getElementById('formTiepNhan').addEventListener('submit', handleFormSubmit);
 
-  // AI auto-classify on typing (debounced)
+  // Auto-classify on typing (debounced)
   let debounceTimer;
   document.getElementById('inputNoiDung').addEventListener('input', () => {
     clearTimeout(debounceTimer);

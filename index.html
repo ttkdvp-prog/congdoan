@@ -268,15 +268,15 @@
             <div class="form-group full-width">
               <label class="form-label">Nội dung sự việc <span class="required">*</span></label>
               <textarea class="form-textarea" id="inputNoiDung" placeholder="Mô tả chi tiết sự việc (ốm đau, viếng, sinh con, tai nạn...)" required></textarea>
-              <span class="form-hint ai-hint">🤖 AI sẽ tự động phân loại khi bạn nhập nội dung</span>
+              <span class="form-hint ai-hint">📋 Hệ thống sẽ tự động phân loại khi bạn nhập nội dung</span>
             </div>
 
           </div>
 
-          <!-- AI Suggestion -->
+          <!-- Gợi ý tự động -->
           <div class="ai-suggestion" id="aiSuggestion" style="display:none">
             <div class="ai-suggestion-header">
-              🤖 AI Gợi ý tự động
+              📋 Gợi ý tự động
             </div>
             <div class="ai-suggestion-content" id="aiSuggestionContent">
             </div>
@@ -285,9 +285,9 @@
           <!-- Classification results -->
           <div class="form-grid" style="margin-top:20px">
             <div class="form-group">
-              <label class="form-label">Loại chăm lo (AI gợi ý)</label>
+              <label class="form-label">Loại chăm lo</label>
               <select class="form-select" id="inputLoaiChamLo">
-                <option value="">-- AI đang phân loại... --</option>
+                <option value="">-- Đang phân loại... --</option>
                 <option value="Ốm đau/đi viện">Ốm đau/đi viện</option>
                 <option value="Hiếu/viếng">Hiếu/viếng</option>
                 <option value="Hỷ/Sinh con">Hỷ/Sinh con</option>
@@ -491,7 +491,7 @@
     </div>
     <div class="modal-body" id="modalBody">
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" id="modalFooter">
       <button class="btn btn-sm btn-secondary" onclick="closeModal()">Đóng</button>
     </div>
   </div>
