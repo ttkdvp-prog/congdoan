@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Công Đoàn Số – Quản lý chăm lo đoàn viên</title>
+  <meta name="description" content="Hệ thống quản lý công tác chăm lo đoàn viên, người lao động – Công đoàn Trung tâm Hạ tầng">
+  <link rel="stylesheet" href="index.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="app-wrapper">
+
+  <!-- ═══════ SIDEBAR (Desktop) ═══════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">🏛️</div>
+        <div class="sidebar-logo-text">
+          <h1>Công Đoàn Số</h1>
+          <span>TT Hạ tầng</span>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" id="sidebarNav">
+      <div class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">📊</span>
+        <span>Dashboard</span>
+      </div>
+      <div class="nav-item" data-page="tiepnhan">
+        <span class="nav-icon">📝</span>
+        <span>Tiếp nhận</span>
+        <span class="nav-badge" id="badgePending">0</span>
+      </div>
+      <div class="nav-item" data-page="hoso">
+        <span class="nav-icon">📋</span>
+        <span>Hồ sơ chăm lo</span>
+        <span class="nav-badge">48</span>
+      </div>
+      <div class="nav-item" data-page="quyche">
+        <span class="nav-icon">⚙️</span>
+        <span>Quy chế</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-info">
+        <div class="sidebar-avatar">CB</div>
+        <div>
+          <div class="user-name">Cán bộ Công đoàn</div>
+          <div class="user-role">Quản trị hệ thống</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Sidebar overlay for mobile -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ═══════ MAIN CONTENT ═══════ -->
+  <main class="main-content">
+
+    <!-- ── Top Bar ── -->
+    <header class="topbar">
+      <button class="btn-menu-toggle" id="btnMenuToggle" aria-label="Menu">☰</button>
+      <span class="topbar-title" id="topbarTitle">Dashboard</span>
+      <span class="topbar-breadcrumb">
+        <span>Công Đoàn Số</span>
+        <span class="separator">›</span>
+        <span id="topbarPage">Tổng quan</span>
+      </span>
+      <div class="topbar-actions">
+        <span style="font-size:12px;color:var(--text-tertiary)" id="currentDate"></span>
+      </div>
+    </header>
+
+    <!-- ═══════════════════════════════════
+         PAGE: DASHBOARD
+         ═══════════════════════════════════ -->
+    <div class="page-container" id="page-dashboard">
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <div class="kpi-icon">📋</div>
+            <span class="kpi-trend up">+6 T7</span>
+          </div>
+          <div class="kpi-value" data-count="48">0</div>
+          <div class="kpi-label">Tổng số lượt chăm lo</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <div class="kpi-icon">💰</div>
+            <span class="kpi-trend up">+3.9tr</span>
+          </div>
+          <div class="kpi-value" data-count="67300000" data-format="currency">0</div>
+          <div class="kpi-label">Tổng kinh phí</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <div class="kpi-icon">📍</div>
+          </div>
+          <div class="kpi-value" data-count="4">0</div>
+          <div class="kpi-label">Số địa bàn</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <div class="kpi-icon">📈</div>
+          </div>
+          <div class="kpi-value" data-count="1402083" data-format="currency">0</div>
+          <div class="kpi-label">Mức chi bình quân</div>
+        </div>
+      </div>
+
+      <!-- Charts Row 1 -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Cơ cấu loại chăm lo</div>
+              <div class="chart-subtitle">Phân bổ theo loại hỗ trợ</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartLoai"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Thống kê theo địa bàn</div>
+              <div class="chart-subtitle">Số lượt & kinh phí</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartDiaBan"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart Row 2 - Monthly Trend -->
+      <div class="charts-grid">
+        <div class="chart-card full-width">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Xu hướng theo tháng – 2026</div>
+              <div class="chart-subtitle">Số lượt và kinh phí hàng tháng</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartThang"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent cases table -->
+      <div class="section-header">
+        <div class="section-title">
+          <span class="dot"></span>
+          Hồ sơ gần đây
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="navigateTo('hoso')">Xem tất cả →</button>
+      </div>
+
+      <div class="data-table-wrapper recent-table-wrapper">
+        <div class="table-overflow">
+          <table class="data-table" id="recentTable">
+            <thead>
+              <tr>
+                <th>Mã hồ sơ</th>
+                <th>Nội dung</th>
+                <th>Loại</th>
+                <th>Số tiền</th>
+                <th>Trạng thái</th>
+                <th>Cảnh báo</th>
+              </tr>
+            </thead>
+            <tbody id="recentTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════
+         PAGE: TIEP NHAN (Form nhập đề nghị)
+         ═══════════════════════════════════ -->
+    <div class="page-container page-hidden" id="page-tiepnhan">
+
+      <div class="form-card">
+        <div class="form-card-header">
+          <div class="form-card-title">
+            📝 Nhập đề nghị chăm lo mới
+          </div>
+          <span class="badge badge-info" id="formMaHoSo">Mã: --</span>
+        </div>
+
+        <form id="formTiepNhan" autocomplete="off">
+          <div class="form-grid">
+
+            <!-- Auto-generated -->
+            <div class="form-group">
+              <label class="form-label">Mã hồ sơ</label>
+              <input class="form-input" type="text" id="inputMaHoSo" readonly style="opacity:0.6">
+              <span class="form-hint">🔄 Tự động sinh</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Ngày tiếp nhận</label>
+              <input class="form-input" type="date" id="inputNgay" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Người đề nghị <span class="required">*</span></label>
+              <input class="form-input" type="text" id="inputNguoiDeNghi" placeholder="Họ tên cán bộ đề nghị" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Tổ / Địa bàn <span class="required">*</span></label>
+              <select class="form-select" id="inputDiaBan" required>
+                <option value="">-- Chọn địa bàn --</option>
+                <option value="Phú Thọ">Phú Thọ</option>
+                <option value="Vĩnh phúc">Vĩnh Phúc</option>
+                <option value="Hòa Bình">Hòa Bình</option>
+                <option value="Khác">Khác</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Đoàn viên liên quan</label>
+              <input class="form-input" type="text" id="inputDoanVien" placeholder="Họ tên đoàn viên">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Người được hỗ trợ</label>
+              <input class="form-input" type="text" id="inputNguoiHoTro" placeholder="Họ tên người được thăm hỏi/hỗ trợ">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Quan hệ</label>
+              <select class="form-select" id="inputQuanHe">
+                <option value="">-- Chọn --</option>
+                <option value="Bản thân">Bản thân</option>
+                <option value="Vợ">Vợ</option>
+                <option value="Chồng">Chồng</option>
+                <option value="Bố đẻ">Bố đẻ</option>
+                <option value="Mẹ đẻ">Mẹ đẻ</option>
+                <option value="Bố vợ">Bố vợ</option>
+                <option value="Mẹ vợ">Mẹ vợ</option>
+                <option value="Con">Con</option>
+                <option value="Khác">Khác</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Mức độ ưu tiên</label>
+              <select class="form-select" id="inputUuTien">
+                <option value="Bình thường">Bình thường</option>
+                <option value="Khẩn">Khẩn</option>
+                <option value="Rất khẩn">Rất khẩn</option>
+              </select>
+            </div>
+
+            <div class="form-group full-width">
+              <label class="form-label">Nội dung sự việc <span class="required">*</span></label>
+              <textarea class="form-textarea" id="inputNoiDung" placeholder="Mô tả chi tiết sự việc (ốm đau, viếng, sinh con, tai nạn...)" required></textarea>
+              <span class="form-hint ai-hint">🤖 AI sẽ tự động phân loại khi bạn nhập nội dung</span>
+            </div>
+
+          </div>
+
+          <!-- AI Suggestion -->
+          <div class="ai-suggestion" id="aiSuggestion" style="display:none">
+            <div class="ai-suggestion-header">
+              🤖 AI Gợi ý tự động
+            </div>
+            <div class="ai-suggestion-content" id="aiSuggestionContent">
+            </div>
+          </div>
+
+          <!-- Classification results -->
+          <div class="form-grid" style="margin-top:20px">
+            <div class="form-group">
+              <label class="form-label">Loại chăm lo (AI gợi ý)</label>
+              <select class="form-select" id="inputLoaiChamLo">
+                <option value="">-- AI đang phân loại... --</option>
+                <option value="Ốm đau/đi viện">Ốm đau/đi viện</option>
+                <option value="Hiếu/viếng">Hiếu/viếng</option>
+                <option value="Hỷ/Sinh con">Hỷ/Sinh con</option>
+                <option value="Tai nạn/rủi ro">Tai nạn/rủi ro</option>
+                <option value="Sinh nhật">Sinh nhật</option>
+                <option value="Quà đoàn viên nghỉ việc">Quà đoàn viên nghỉ việc</option>
+                <option value="Khác">Khác</option>
+              </select>
+              <span class="form-hint ai-hint" id="aiClassLabel"></span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Mức đề nghị (đồng)</label>
+              <input class="form-input" type="text" id="inputMucDeNghi" placeholder="0" inputmode="numeric">
+              <span class="form-hint ai-hint" id="aiMucLabel"></span>
+            </div>
+          </div>
+
+          <div class="form-grid" style="margin-top:16px">
+            <div class="form-group full-width">
+              <label class="form-label">Hồ sơ đã có</label>
+              <input class="form-input" type="text" id="inputHoSoDaCo" placeholder="VD: Đề nghị, danh sách chi, chứng từ...">
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              ✅ Gửi đề nghị
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">
+              🔄 Làm mới
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Submitted cases list -->
+      <div class="section-header" style="margin-top:32px">
+        <div class="section-title">
+          <span class="dot"></span>
+          Đề nghị đã gửi
+        </div>
+      </div>
+
+      <div class="data-table-wrapper">
+        <div class="table-overflow">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Mã hồ sơ</th>
+                <th>Ngày</th>
+                <th>Người đề nghị</th>
+                <th>Loại</th>
+                <th>Mức đề nghị</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody id="submittedTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════
+         PAGE: HO SO (DL_CHAM_LO)
+         ═══════════════════════════════════ -->
+    <div class="page-container page-hidden" id="page-hoso">
+
+      <div class="section-header">
+        <div class="section-title">
+          <span class="dot"></span>
+          Dữ liệu chăm lo đoàn viên
+        </div>
+        <span class="badge badge-primary" id="totalRecords">48 hồ sơ</span>
+      </div>
+
+      <div class="data-table-wrapper">
+        <div class="table-toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchHoSo" placeholder="Tìm kiếm mã, tên, nội dung...">
+          </div>
+          <select class="filter-select" id="filterLoai">
+            <option value="">Tất cả loại</option>
+            <option value="Ốm đau/đi viện">Ốm đau/đi viện</option>
+            <option value="Hiếu/viếng">Hiếu/viếng</option>
+            <option value="Hỷ/Sinh con">Hỷ/Sinh con</option>
+            <option value="Tai nạn/rủi ro">Tai nạn/rủi ro</option>
+            <option value="Sinh nhật">Sinh nhật</option>
+            <option value="Quà đoàn viên nghỉ việc">Quà ĐV nghỉ việc</option>
+            <option value="Khác">Khác</option>
+          </select>
+          <select class="filter-select" id="filterDiaBan">
+            <option value="">Tất cả địa bàn</option>
+            <option value="Phú Thọ">Phú Thọ</option>
+            <option value="Vĩnh phúc">Vĩnh Phúc</option>
+            <option value="Hòa Bình">Hòa Bình</option>
+          </select>
+          <select class="filter-select" id="filterThang">
+            <option value="">Tất cả tháng</option>
+            <option value="1">Tháng 1</option>
+            <option value="2">Tháng 2</option>
+            <option value="3">Tháng 3</option>
+            <option value="4">Tháng 4</option>
+            <option value="5">Tháng 5</option>
+            <option value="6">Tháng 6</option>
+            <option value="7">Tháng 7</option>
+          </select>
+          <select class="filter-select" id="filterTrangThai">
+            <option value="">Tất cả trạng thái</option>
+            <option value="Đã hoàn thành">Đã hoàn thành</option>
+            <option value="Đang xử lý">Đang xử lý</option>
+            <option value="Chờ duyệt">Chờ duyệt</option>
+          </select>
+        </div>
+
+        <div class="table-overflow" id="hosoTableOverflow">
+          <table class="data-table" id="hosoTable">
+            <thead>
+              <tr>
+                <th>Mã hồ sơ</th>
+                <th>Tháng</th>
+                <th>Nội dung</th>
+                <th>Loại chăm lo</th>
+                <th>Số tiền</th>
+                <th>Đoàn viên</th>
+                <th>Địa bàn</th>
+                <th>Trạng thái</th>
+                <th>Cảnh báo</th>
+              </tr>
+            </thead>
+            <tbody id="hosoTableBody">
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-summary" id="hosoSummary">
+        </div>
+
+        <div class="table-pagination" id="hosoPagination">
+          <span class="pagination-info" id="paginationInfo"></span>
+          <div class="pagination-controls" id="paginationControls"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════
+         PAGE: QUY CHE
+         ═══════════════════════════════════ -->
+    <div class="page-container page-hidden" id="page-quyche">
+
+      <div class="section-header">
+        <div class="section-title">
+          <span class="dot"></span>
+          Danh mục chăm lo & Quy tắc xử lý
+        </div>
+      </div>
+
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px;line-height:1.7">
+        Bảng tham chiếu mức hỗ trợ, hồ sơ tối thiểu và thời hạn xử lý cho từng loại chăm lo.
+        <strong style="color:var(--warning-400)">Ban Chấp hành Công đoàn</strong> là cấp quyết định cuối cùng.
+      </p>
+
+      <div class="quyche-grid" id="quycheGrid">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════ BOTTOM NAV (Mobile) ═══════ -->
+<nav class="bottom-nav" id="bottomNav">
+  <div class="bottom-nav-inner">
+    <div class="bottom-nav-item active" data-page="dashboard">
+      <span class="bnav-icon">📊</span>
+      <span>Dashboard</span>
+    </div>
+    <div class="bottom-nav-item" data-page="tiepnhan">
+      <span class="bnav-icon">📝</span>
+      <span>Tiếp nhận</span>
+    </div>
+    <div class="bottom-nav-item" data-page="hoso">
+      <span class="bnav-icon">📋</span>
+      <span>Hồ sơ</span>
+    </div>
+    <div class="bottom-nav-item" data-page="quyche">
+      <span class="bnav-icon">⚙️</span>
+      <span>Quy chế</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════ DETAIL MODAL ═══════ -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Chi tiết hồ sơ</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm btn-secondary" onclick="closeModal()">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
